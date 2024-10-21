@@ -43,12 +43,6 @@ func Subscriber(ctx context.Context, p2pServer *p2p.P2PServer, redisClient *redi
             continue
         }
 
-		peer, err := p2p.FindPeerByAddress(p2pServer.Peers, message.PeerAddress)
-
-		if err != nil {
-			return
-		}
-
 		database.InsertRecord(ctx, redisClient, message.Transaction)
 
 		strTransactionsCountDealine := os.Getenv("TRANSACTIONS_COUNT_DEALINE")
