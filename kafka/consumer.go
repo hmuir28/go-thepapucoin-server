@@ -36,14 +36,14 @@ func Subscriber(ctx context.Context, p2pServer *p2p.P2PServer, redisClient *redi
 			continue
 		}
 
-        var message models.P2PServerMessage
-        err = json.Unmarshal(msg.Value, &message)
+        var transaction models.Transaction
+        err = json.Unmarshal(msg.Value, &transaction)
         if err != nil {
             fmt.Printf("Failed to unmarshal message: %v\n", err)
             continue
         }
 
-		database.InsertRecord(ctx, redisClient, message.Transaction)
+		database.InsertRecord(ctx, redisClient, transaction)
 
 		strTransactionsCountDealine := os.Getenv("TRANSACTIONS_COUNT_DEALINE")
 		var transactionsCountDeadline int
@@ -58,7 +58,7 @@ func Subscriber(ctx context.Context, p2pServer *p2p.P2PServer, redisClient *redi
 		fmt.Println("Message received from kafka")
 
 		if len(transactions) >= transactionsCountDeadline {
-			p2p.BroadcastMessage(p2pServer.Peers, "new_transaction")	
+			p2p.BroadcastTransactions(p2pServer.Peers, "new_transaction", transactions)
 		}
 	}
 }

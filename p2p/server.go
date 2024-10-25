@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"log"
 	"strings"
+	"encoding/json"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/hmuir28/go-thepapucoin-server/database"
+	"github.com/hmuir28/go-thepapucoin-server/models"
 )
 
 type Peer struct {
@@ -49,6 +50,31 @@ func BroadcastMessage(peers []Peer, message string) {
 		}
 	}
 	fmt.Println("Message broadcasted:", message)
+}
+
+func BroadcastTransactions(peers []Peer, message string, transactions []models.Transaction) {
+    // Convert the transactions to JSON
+    messageBytes, err := json.Marshal(transactions)
+    if err != nil {
+        fmt.Println("Error encoding p2p message:", err)
+        return
+    }
+
+    convertedMessage := message + "&" + string(messageBytes)
+
+    // Send JSON message to each peer
+    for _, peer := range peers {
+        if peer.Conn == nil {
+            continue
+        }
+
+        _, err := peer.Conn.Write([]byte(convertedMessage + "\n"))
+        if err != nil {
+            fmt.Println("Error sending message to peer", peer.Address, ":", err)
+            continue
+        }
+    }
+    fmt.Println("Transactions broadcasted:", convertedMessage)
 }
 
 func NewP2PServer() *P2PServer {
@@ -95,10 +121,12 @@ func HandlePeerConnection(ctx context.Context, redisClient *redis.Client, p2pSer
 
 		switch parsedMessage {
 		case "complete_mine":
+			BroadcastMessage(p2pServer.Peers, "stop_mine")
+			
 			err := database.CleanUpTransactions(ctx, redisClient)
 
 			if err != nil {
-				log.Fatalf("Could not clean up transactions in Redis: %v", err)
+				return
 			}
 			break
 		default:
